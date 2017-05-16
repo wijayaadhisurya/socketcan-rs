@@ -49,7 +49,7 @@ pub mod dump;
 mod tests;
 
 use libc::{c_int, c_short, c_void, c_uint, socket, SOCK_RAW, close, bind, sockaddr, read, write,
-           setsockopt, SOL_SOCKET, SO_RCVTIMEO, timeval, EINPROGRESS, SO_SNDTIMEO};
+           setsockopt, SOL_SOCKET, SO_RCVTIMEO, timeval, EINPROGRESS, SO_SNDTIMEO, fcntl, F_SETFL, O_NONBLOCK};
 use itertools::Itertools;
 use std::{error, fmt, io, time};
 use std::mem::size_of;
@@ -281,6 +281,21 @@ impl CANSocket {
             unsafe {
                 close(sock_fd);
             }
+            return Err(CANSocketOpenError::from(e));
+        }
+
+        let fcntl_err;
+        unsafe {
+            fcntl_err = fcntl(sock_fd, F_SETFL, O_NONBLOCK);
+        }
+
+        if fcntl_err == -1 {
+            let e = io::Error::last_os_error();
+
+            unsafe {
+                close(sock_fd);
+            }
+
             return Err(CANSocketOpenError::from(e));
         }
 
